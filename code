@@ -1,4 +1,4 @@
-import requests, pprint, random
+import requests, random
 
 information_1 = requests.get("https://pokeapi.co/api/v2/pokemon?limit=100000&offset=0")
 response_1 = information_1.json()
