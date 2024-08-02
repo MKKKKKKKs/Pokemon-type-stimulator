@@ -1,0 +1,203 @@
+import requests, pprint, random
+
+information_1 = requests.get("https://pokeapi.co/api/v2/pokemon?limit=100000&offset=0")
+response_1 = information_1.json()
+pokemon_types = ["fire", "water", "grass", "flying", "bug", "dragon", "fighting", "electric",
+                 "ground", "rock", "ice", "steel", "fairy", "dark", "psychic", "ghost", "poison", "normal"]
+score = 3
+count = 0
+ball = "Origin Ball"
+rounds = 0
+pokemon_team = [" ", " ", " ", " ", " ", " "]
+
+# introduction of the game
+print("""###
+You are a Pokémon Trainer.
+In this world, you will encounter various Pokémon, the pokemons don't have their abilities.
+You can defeat them by using different type of attacks according to their weaknesses.
+If you wish, you can also try to catch them.
+Your chances of capturing Pokémon will increase as the pokemon ball you use level up.
+You may quit by entering a random answer to the first question
+###""")
+
+while True:
+    pokemon_name = " "
+    default_form = "?"
+    rounds += 1
+
+    # choose a random pokémon
+    print(f"  \nRound {rounds}:")
+    select = random.randint(0,1302)
+    pokemon = response_1['results'][select]['name']
+    information_2 = requests.get(response_1['results'][select]['url'])
+    response_2 = information_2.json()
+
+    # translate the pokémon names into chinese
+    try: 
+        specie = requests.get(f"https://pokeapi.co/api/v2/pokemon-species/{pokemon}")
+        specie_info = specie.json()
+        for row_1 in specie_info["names"]:
+            if specie_info["names"][count]["language"]["name"] == "zh-Hans":
+                chinese_name = specie_info["names"][count]["name"]
+            count += 1
+        pokemon_name = f"{str(pokemon).title()} [{chinese_name}]"
+        print (f"{pokemon_name} comes!")
+        count = 0
+    except:
+        try:
+            specie = requests.get(response_2["species"]["url"])
+            specie_info = specie.json()
+            for row_3 in specie_info["names"]:
+                if specie_info["names"][count]["language"]["name"] == "zh-Hans":
+                    chinese_specie_name = specie_info["names"][count]["name"]
+                count += 1
+            count = 0
+
+            form= requests.get(response_2 ["forms"][0]["url"])
+            form_info = form.json()
+            for row_2 in form_info["form_names"]:
+                if form_info["form_names"][count]["language"]["name"] == "zh-Hans":
+                    chinese_form_name = form_info["form_names"][count]["name"]
+                count += 1
+            count = 0
+            pokemon_name = str(pokemon).title() + "[" + chinese_specie_name + '-' + chinese_form_name + "]"
+            print (f"{pokemon_name} comes!") 
+            chinese_form_name = 1
+        except:
+            if form_info["form_name"] == "hisui":
+                default_form = "-洗翠的样子"
+            elif form_info["form_name"] == "gmax":
+                default_form = "-超极巨化" 
+            elif form_info["form_name"] == "totem":
+                default_form = "-头目" 
+            pokemon_name = f"{str(pokemon).title()} [{chinese_specie_name}{default_form}]"
+            print (f"{pokemon_name} comes!")
+
+    # reset lists for pokémon’s damage relationship
+    weakness = []
+    resist = []
+    immune = []
+    damage = 1
+
+    # determine pokémon’s damage relationship
+    if len(response_2['types']) > 1:
+        type = [response_2['types'][0]['type']['name'], response_2['types'][1]['type']['name']]
+    
+        information_3 = requests.get(response_2['types'][0]['type']['url'])
+        response_3 = information_3.json()
+        for each_weakness_1 in response_3["damage_relations"]["double_damage_from"]:
+            weakness.append(each_weakness_1.get('name'))
+        for each_resist_1 in response_3["damage_relations"]["half_damage_from"]:
+            resist.append(each_resist_1.get('name'))
+        for each_immune_1 in response_3["damage_relations"]["no_damage_from"]:
+            immune.append(each_immune_1.get('name'))
+
+        information_4 = requests.get(response_2['types'][1]['type']['url'])
+        response_4 = information_4.json()
+        for each_weakness_2 in response_4["damage_relations"]["double_damage_from"]:
+            weakness.append(each_weakness_2.get('name'))
+        for each_resist_2 in response_4["damage_relations"]["half_damage_from"]:
+            resist.append(each_resist_2.get('name')) 
+        for each_immune_2 in response_4["damage_relations"]["no_damage_from"]:
+            immune.append(each_immune_2.get('name'))
+
+    else:
+        type = [response_2['types'][0]['type']['name']]
+        information_3 = requests.get(response_2['types'][0]['type']['url'])
+        response_3 = information_3.json()
+        for each_weakness in response_3["damage_relations"]["double_damage_from"]:
+            weakness.append(each_weakness.get('name'))
+        for each_resist in response_3["damage_relations"]["half_damage_from"]:
+            resist.append(each_resist.get('name'))
+        for each_immune in response_3["damage_relations"]["no_damage_from"]:
+            immune.append(each_immune.get('name'))
+    
+    # users select type for attacks
+    answer = input("Use the best type of attack to defeat this pokemon: ").lower()
+
+    if answer in pokemon_types:
+        if answer in weakness:
+            damage = damage * weakness.count(answer) * 2
+        if answer in resist:
+            damage = damage / resist.count(answer) / 2
+        if answer in immune:
+            damage = 0
+
+        if damage == 2:
+            score += 1
+            print ("It is effective! You defeat the pokemon.")
+        elif damage == 4:
+            score += 2
+            print ("It is super effective! You defeat the pokemon.")
+        elif damage == 0.5:
+            score -= 1
+            print (f"It is not very effective... You have to escape")
+        elif damage == 0.25:
+            score -= 2
+            print (f"It is super not effective... You have to escape")
+        elif damage == 0:
+            score -= 3
+            print (f"It is meaningless... You have to escape")
+        else:
+            print ("It is just okay. You will face another pokemon.")
+
+        if score > 0:
+            match score:
+                case _ if score >= 20:
+                    ball = "Master Ball"
+                    print(ball)
+                    print(f"Total Points: {score}")
+                case _ if score >= 15 :
+                    ball = "Ultra Ball"
+                    print(ball)
+                    print(f"Total Points: {score}")
+                case _ if score >= 10:
+                    ball = "Great Ball"
+                    print(ball)
+                    print(f"Total Points: {score}")
+                case _ if score >= 5 :
+                    ball = "Poké Ball"
+                    print(ball)
+                    print(f"Total Points: {score}")
+                case _ if score < 5 :
+                    ball = "Origin Ball"
+                    print (ball)
+                    print(f"Total Points: {score}")
+        
+        else:
+            print(f"Your score is {score}. \nGame Over!")
+            break
+        
+        # catch the pokémon
+        try:
+            if damage > 1:
+                get_it = input("Do you want to catch it? Yes or No: ")
+                if get_it.lower() == "yes":
+                    possibility = random.randint(0,100)
+                    if ball == "Origin Ball" and possibility == 100:
+                        put_in_team = int(input("You Got It! Enter the spot the pokemon will stay in, the original pokemon will be replaced, 0-5: "))
+                        pokemon_team[put_in_team] = pokemon_name
+                    elif ball == "Poké Ball" and possibility >= 90:
+                        put_in_team = int(input("You Got It! Enter the spot the pokemon will stay in, the original pokemon will be replaced, 0-5: "))
+                        pokemon_team[put_in_team] = pokemon_name
+                    elif ball == "Great Ball" and possibility >= 70:
+                        put_in_team = int(input("You Got It! Enter the spot the pokemon will stay in, the original pokemon will be replaced, 0-5: "))
+                        pokemon_team[put_in_team] = pokemon_name
+                    elif ball == "Ultra Ball" and possibility >= 40:
+                        put_in_team = int(input("You Got It! Enter the spot the pokemon will stay in, the original pokemon will be replaced, 0-5: "))
+                        pokemon_team[put_in_team] = pokemon_name
+                    elif ball == "Master Ball" and possibility >= 0:
+                        put_in_team = int(input("You Got It! Enter the spot the pokemon will stay in, the original pokemon will be replaced, 0-5: "))
+                        pokemon_team[put_in_team] = pokemon_name
+                    else:
+                        print (f"You failed, {pokemon_name} runs away...")
+        except: 
+            continue
+        
+        print (pokemon_team)
+
+    else:
+        print (f"You entered a invalid answer. Your journey ended and you scored {score} points. Your final team is {pokemon_team}!")
+        break
+
+print("The End :)")
